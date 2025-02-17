@@ -3,6 +3,8 @@ module.exports = {
     name: "github-discord-bot",
     script: "index.js",
     watch: true,
+    // Ignore watch on log files
+    ignore_watch: ["logs/*", "node_modules"],
     env: {
       NODE_ENV: "production",
     },
