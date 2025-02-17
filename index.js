@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const bodyParser = require('body-parser');
 require('dotenv').config();
+const crypto = require('crypto');
 
 // Initialize Discord client
 const client = new Client({
@@ -17,9 +18,28 @@ client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
+// Add this function to verify GitHub webhook signature
+function verifyGithubWebhook(req) {
+    const signature = req.headers['x-hub-signature-256'];
+    if (!signature) {
+        throw new Error('No signature found');
+    }
+
+    const hmac = crypto.createHmac('sha256', process.env.GITHUB_WEBHOOK_SECRET);
+    const digest = 'sha256=' + hmac.update(JSON.stringify(req.body)).digest('hex');
+    
+    if (signature !== digest) {
+        throw new Error('Invalid signature');
+    }
+    return true;
+}
+
 // Handle GitHub webhook
 app.post('/webhook', async (req, res) => {
     try {
+        // Verify webhook signature
+        verifyGithubWebhook(req);
+        
         const payload = req.body;
         
         // Check if it's a push event
@@ -43,8 +63,8 @@ app.post('/webhook', async (req, res) => {
 
         res.status(200).send('Webhook received');
     } catch (error) {
-        console.error('Error processing webhook:', error);
-        res.status(500).send('Error processing webhook');
+        console.error('Webhook Error:', error.message);
+        return res.status(401).send('Unauthorized');
     }
 });
 
